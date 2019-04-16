@@ -65,8 +65,22 @@ ggplot(df_waiter, aes(x = timestamp)) + geom_line(aes(y = minute_duration, col="
 # ------------------- Change timestamp --------------------------------------------
 # -------------------------------------------------------------------------------------
 
+head(df_waiter, 2)
+library(xts)
+data <- as.xts(df_waiter$minute_duration, order.by=as.Date(df_waiter$timestamp))
+weekly <- apply.weekly(data, sum)
 
+df_waiter <- as.data.frame(weekly)
+colnames(df_waiter) <- "minute_duration"
 
+# get the timestamp index and convert it into a column
+df_waiter$timestamp <- rownames(df_waiter)
+
+# set integer indexes instead of timestamp (because of xts)
+rownames(df_waiter) <- index(df_waiter)
+
+# switch column order
+df_waiter <- df_waiter[,c(2,1)]
 
 # -------------------------------------------------------------------------------------
 # ------------------- Modelisation ----------------------------------------------------
@@ -117,22 +131,22 @@ arima_test <- test
 arima_test[, c("ds")] <- NULL
 
 # Convert DF to timeseries (ts); D=1, we force seasonality
-arima_train_ts <- ts(arima_train,frequency=365)
+arima_train_ts <- ts(arima_train, frequency=52)
 
 # tsoutlier ----------------------------------------------------------
-library(tsoutliers)
-
-outliers_arima_train_ts <- tso(arima_train_ts)
-
-plot(outliers_arima_train_ts)
-
-arima_train_ts <- outliers_arima_train_ts$yadj
-
-train$y <- arima_train_ts
+# library(tsoutliers)
+# 
+# outliers_arima_train_ts <- tso(arima_train_ts)
+# 
+# plot(outliers_arima_train_ts)
+# 
+# arima_train_ts <- outliers_arima_train_ts$yadj
+# 
+# train$y <- arima_train_ts
 
 # go back to arima --------------------------------------------------
 
-fit_arima <- auto.arima(arima_train_ts, D=1)
+fit_arima <- auto.arima(arima_train_ts, xreg=fourier(arima_train_ts, K=13), seasonal = FALSE)
 fcast_arima <- forecast(fit_arima, h=nrow(arima_test))
 
 # If you want to get the parameters
@@ -229,9 +243,10 @@ unique(gather_df$Algorithm)
 
 # Solution: https://stackoverflow.com/questions/55610018/multiple-time-series-with-face-wrap/55610223#55610223
 
-ggplot(gather_df %>% filter(Algorithm != "y"), aes(x = ds, y = values)) +
+ggplot(gather_df %>% filter(Algorithm != "y"), aes(x = ds, y = values, group=1)) +
   geom_line(aes(color = Algorithm)) +
   scale_color_brewer(palette = "Dark2") +
   facet_wrap(~ Algorithm) + 
   geom_line(data = gather_df %>% filter(Algorithm == "y") %>% select(-Algorithm))
 
+print(result_all_scores)
