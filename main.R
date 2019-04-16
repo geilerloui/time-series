@@ -65,7 +65,6 @@ ggplot(df_waiter, aes(x = timestamp)) + geom_line(aes(y = minute_duration, col="
 # ------------------- Change timestamp --------------------------------------------
 # -------------------------------------------------------------------------------------
 
-head(df_waiter, 2)
 library(xts)
 data <- as.xts(df_waiter$minute_duration, order.by=as.Date(df_waiter$timestamp))
 weekly <- apply.weekly(data, sum)
@@ -81,6 +80,7 @@ rownames(df_waiter) <- index(df_waiter)
 
 # switch column order
 df_waiter <- df_waiter[,c(2,1)]
+
 
 # -------------------------------------------------------------------------------------
 # ------------------- Modelisation ----------------------------------------------------
@@ -133,6 +133,8 @@ arima_test[, c("ds")] <- NULL
 # Convert DF to timeseries (ts); D=1, we force seasonality
 arima_train_ts <- ts(arima_train, frequency=52)
 
+plot(arima_train_ts)
+
 # tsoutlier ----------------------------------------------------------
 # library(tsoutliers)
 # 
@@ -146,7 +148,7 @@ arima_train_ts <- ts(arima_train, frequency=52)
 
 # go back to arima --------------------------------------------------
 
-fit_arima <- auto.arima(arima_train_ts, xreg=fourier(arima_train_ts, K=13), seasonal = FALSE)
+fit_arima <- auto.arima(arima_train_ts, D=1)
 fcast_arima <- forecast(fit_arima, h=nrow(arima_test))
 
 # If you want to get the parameters
